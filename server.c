@@ -12,7 +12,6 @@ struct AcceptedSocket {
 };
 
 struct AcceptedSocket * acceptIncomingConnection (int);
-void receiveAndPrintIncomingData(int);
 void spawnThreadForClient(struct AcceptedSocket*);
 void startAcceptingIncomingConnections(int);
 void updateOtherClients(char *, int);
@@ -50,7 +49,7 @@ void startAcceptingIncomingConnections(int serverSocketFD)
     }
 }
 
-struct AcceptedSocket * acceptIncomingConnection(int serverSocketFD)
+struct AcceptedSocket *acceptIncomingConnection(int serverSocketFD)
 {
     struct sockaddr_in clientAddress;
     int clientAddressSize = sizeof(struct sockaddr_in);
@@ -71,26 +70,11 @@ struct AcceptedSocket * acceptIncomingConnection(int serverSocketFD)
 void spawnThreadForClient(struct AcceptedSocket * clientSocket)
 {
     pthread_t id;
-    pthread_create(&id, NULL, receiveAndPrintIncomingData, clientSocket->acceptedSocketFD);
-}
+    struct SocketUpdateArgs *args = malloc(sizeof(struct SocketUpdateArgs));
+    args->socketFD = clientSocket->acceptedSocketFD;
+    args->callback = &updateOtherClients;
 
-void receiveAndPrintIncomingData(int socketFD)
-{
-    char buffer[1024];
-    while (true)
-    {
-        ssize_t amountReceived = recv(socketFD, buffer, 1024, 0);
-
-        if (amountReceived > 0){
-            buffer[amountReceived] = 0; // Null terminate the buffer string
-            printf("%s\n", buffer);
-
-            updateOtherClients(buffer, socketFD);
-        }
-        if (amountReceived == 0)
-            break;
-    }
-    close(socketFD);
+    pthread_create(&id, NULL, listenForUpdates, args);
 }
 
 void updateOtherClients(char *buffer, int socketFD)
@@ -101,6 +85,3 @@ void updateOtherClients(char *buffer, int socketFD)
         }
     }
 }
-
-
-
